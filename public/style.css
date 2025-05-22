@@ -1,0 +1,47 @@
+body { font-family: 'Arial', sans-serif; }
+.fade-in { animation: fadeIn 0.5s ease-in; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+#messages {
+  transition: all 0.3s ease;
+}
+#typingIndicator {
+    transition: opacity 0.3s ease;
+}
+
+#typingIndicator.hidden{
+    opacity: 0;
+    height: 0;
+    overflow: hidden;
+    margin-top: 0;
+    padding: 0;
+}
+.sent-message {
+  background-color: #d1e7dd; /* light green */
+  color: #0f5132; /* dark green text */
+  padding: 8px 12px;
+  border-radius: 10px;
+  margin: 6px 0;
+  max-width: 75%;
+  align-self: flex-end;
+  transition: background-color 0.3s ease;
+}
+
+.seen-message {
+  background-color: #a3d9a5 !important; /* a stronger green */
+  color: #064420 !important;
+  font-weight: bold;
+}
+.spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #333;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+  margin: auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

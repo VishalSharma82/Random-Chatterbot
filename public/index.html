@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Chat</title>
+    <link rel="stylesheet" href="./style.css">
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-r from-purple-500 to-indigo-600 text-white flex items-center justify-center h-screen">
+
+<div id="container" class="w-full max-w-md p-6 bg-white rounded-lg shadow-lg text-gray-900 fade-in">
+  <h2 class="text-2xl font-bold text-center mb-2">Random Chat</h2>
+
+  <div class="mb-4">
+    <label>Your Name: <input type="text" id="nameInput" placeholder="Enter your name" /></label>
+    <label class="block text-sm font-semibold">Select Gender:</label>
+    <select id="gender" class="w-full mt-1 p-2 border rounded-md">
+      <option value="">-- Select --</option>
+      <option value="male">Male</option>
+      <option value="female">Female</option>
+      <option value="other">Other</option>
+    </select>
+  </div>
+
+  <div class="mb-4">
+    <label class="block text-sm font-semibold">Search by Code (optional):</label>
+    <input type="text" id="searchCode" class="w-full mt-1 p-2 border rounded-md" placeholder="Enter friend's code">
+  </div>
+
+  <div class="mb-4 text-sm text-gray-700">
+    <strong>Your Code:</strong> <span id="yourCode" class="text-purple-600 font-mono">Generating...</span>
+  </div>
+
+  <button id="startChat" class="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition">Start Chat</button>
+
+  <div id="chat" class="hidden mt-4">
+    <p id="status" class="text-center text-gray-500">Searching for a partner...</p>
+
+    <div id="messages" class="h-96 overflow-y-auto bg-gray-100 p-4 rounded-lg space-y-3 shadow-inner"></div>
+    <div class="mt-2 flex items-center gap-2">
+      <input type="text" id="input" class="flex-1 p-2 border border-gray-300 rounded-lg text-gray-900" placeholder="Type a message...">
+      <button onclick="sendMessage()" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition">Send</button>
+    </div>
+
+    <p id="typingIndicator" class="text-sm text-gray-500 mt-2 hidden">Stranger is typing...</p>
+
+    <button id="skipChat" class="w-full mt-2 bg-yellow-500 text-white py-2 rounded-lg hover:bg-yellow-600 transition hidden">Skip Partner</button>
+    <button id="exitChat" class="w-full mt-4 bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 transition hidden">Exit Chat</button>
+
+  </div>
+</div>
+<div id="status"></div>
+
+    <script src="./script.js"></script>
+</body>
+</html>
