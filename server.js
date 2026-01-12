@@ -2,7 +2,12 @@ const express = require("express");
 const app = express();
 const http = require("http").createServer(app);
 const { Server } = require("socket.io");
-const io = new Server(http);
+const io = new Server(http, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
 const { v4: uuidv4 } = require("uuid");
 
 app.use(express.static("public"));
@@ -10,7 +15,7 @@ app.use(express.static("public"));
 /* ------------------ DATA ------------------ */
 const users = new Map(); // socket.id => user
 const queue = [];
-const friends = new Map(); // code => [codes]
+const friends = new Map();
 
 /* ------------------ SOCKET ------------------ */
 io.on("connection", socket => {
@@ -40,10 +45,8 @@ io.on("connection", socket => {
   socket.on("find-partner", ({ gender, searchCode }) => {
     user.gender = gender;
     user.partner = null;
-
     removeFromQueue(user);
 
-    // direct search
     if (searchCode) {
       const target = [...users.values()].find(
         u => u.code === searchCode && !u.partner && u.socketId !== socket.id
@@ -51,7 +54,6 @@ io.on("connection", socket => {
       if (target) return match(user, target);
     }
 
-    // random match
     const waiting = queue.find(u => !u.partner && u.socketId !== socket.id);
     if (waiting) {
       removeFromQueue(waiting);
@@ -62,30 +64,31 @@ io.on("connection", socket => {
     }
   });
 
-  /* ---------- CHAT ---------- */
-  socket.on("send-message", ({ to, msg }) => {
-    const target = users.get(to);
-    if (target) target.socket.emit("receive-message", msg);
+  /* ---------- CHAT (FIXED) ---------- */
+  socket.on("send-message", msg => {
+    if (user.partner) {
+      user.partner.socket.emit("receive-message", msg);
+    }
   });
 
-  socket.on("typing", ({ to, status }) => {
-    const target = users.get(to);
-    if (target) target.socket.emit("typing", { status });
+  socket.on("typing", status => {
+    if (user.partner) {
+      user.partner.socket.emit("typing", { status });
+    }
   });
 
-  /* ---------- FRIENDS ---------- */
-  socket.on("add-friend", ({ to }) => {
-    const target = users.get(to);
-    if (!target) return;
+  /* ---------- FRIEND ---------- */
+  socket.on("add-friend", () => {
+    if (!user.partner) return;
 
     const a = user.code;
-    const b = target.code;
+    const b = user.partner.code;
 
     if (!friends.get(a).includes(b)) friends.get(a).push(b);
     if (!friends.get(b).includes(a)) friends.get(b).push(a);
 
     socket.emit("friend-added", b);
-    target.socket.emit("friend-added", a);
+    user.partner.socket.emit("friend-added", a);
   });
 
   socket.on("get-friends", () => {
@@ -95,9 +98,8 @@ io.on("connection", socket => {
   /* ---------- SKIP ---------- */
   socket.on("skip-partner", () => {
     if (user.partner) {
-      const p = user.partner;
-      p.partner = null;
-      p.socket.emit("partner-disconnected");
+      user.partner.partner = null;
+      user.partner.socket.emit("partner-disconnected");
     }
     user.partner = null;
     removeFromQueue(user);
@@ -136,7 +138,7 @@ io.on("connection", socket => {
   });
 });
 
-/* ------------------ MATCHING ------------------ */
+/* ------------------ MATCH ------------------ */
 function match(a, b) {
   a.partner = b;
   b.partner = a;
@@ -162,5 +164,5 @@ function removeFromQueue(user) {
 /* ------------------ SERVER ------------------ */
 const PORT = process.env.PORT || 3000;
 http.listen(PORT, () =>
-  console.log(`✅ Server running on http://localhost:${PORT}`)
+  console.log(`✅ Server running on port ${PORT}`)
 );
