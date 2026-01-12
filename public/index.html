@@ -1,132 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Random Chat</title>
 
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Random Chat</title>
+  <link rel="stylesheet" href="./style.css">
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body class="bg-gradient-to-br from-indigo-600 to-purple-700 min-h-screen flex items-center justify-center">
-
-<div class="w-full max-w-6xl h-[92vh] bg-white rounded-2xl shadow-2xl flex overflow-hidden">
-
-  <!-- LEFT PROFILE (DESKTOP) -->
-  <div class="hidden md:flex w-1/3 bg-indigo-700 text-white p-6 flex-col">
-    <h2 class="text-2xl font-bold mb-4">Your Profile</h2>
-
-    <img class="w-24 h-24 rounded-full mb-4 border-2 border-white"
-         src="https://i.pravatar.cc/150" />
-
-    <input id="nameInput"
-           class="p-2 rounded text-black mb-3"
-           placeholder="Your name" />
-
-    <select id="gender" class="p-2 rounded text-black mb-3">
-      <option value="">Select Gender</option>
-      <option value="male">Male</option>
-      <option value="female">Female</option>
-      <option value="other">Other</option>
-    </select>
-
-    <input id="searchCode"
-           class="p-2 rounded text-black mb-3"
-           placeholder="Search by Code (optional)" />
-
-    <div class="mt-2 text-sm">
-      <p>Your Code</p>
-      <p id="yourCode" class="font-mono text-lg text-green-300">
-        Generating...
-      </p>
-    </div>
-
-    <button id="startChat"
-            class="mt-auto bg-green-500 hover:bg-green-600 transition py-2 rounded text-white font-semibold">
-      Start Chat
-    </button>
-  </div>
-
-  <!-- RIGHT CHAT AREA -->
-  <div class="flex-1 flex flex-col">
-
-    <!-- HEADER -->
-    <div class="flex items-center justify-between p-4 bg-gray-100 border-b">
-      <div>
-        <p id="partnerName" class="font-semibold">Not Connected</p>
-        <p id="status" class="text-xs text-gray-500">Idle</p>
-      </div>
-
-      <button id="addFriendBtn" class="hidden text-red-500 text-2xl">❤️</button>
-    </div>
-
-    <!-- MOBILE PROFILE (VISIBLE ON SMALL SCREENS) -->
-    <div class="md:hidden p-4 border-b space-y-2 bg-gray-50">
-      <input id="nameInput"
-             class="w-full p-2 border rounded"
-             placeholder="Your name" />
-
-      <select id="gender" class="w-full p-2 border rounded">
-        <option value="">Select Gender</option>
+<body class="bg-gradient-to-r from-purple-500 to-indigo-600 text-white flex items-center justify-center h-screen">
+  <div id="container" class="w-full max-w-md p-6 bg-white rounded-lg shadow-lg text-gray-900 fade-in">
+    <h2 class="text-2xl font-bold text-center mb-2">Random Chat</h2>
+    <div class="mb-4"> <label>Your Name: <input type="text" id="nameInput" placeholder="Enter your name" /></label>
+      <label class="block text-sm font-semibold">Select Gender:</label> <select id="gender"
+        class="w-full mt-1 p-2 border rounded-md">
+        <option value="">-- Select --</option>
         <option value="male">Male</option>
         <option value="female">Female</option>
         <option value="other">Other</option>
-      </select>
-
-      <input id="searchCode"
-             class="w-full p-2 border rounded"
-             placeholder="Search by Code (optional)" />
-
-      <p class="text-sm">
-        Your Code:
-        <span id="yourCode" class="font-mono text-indigo-600">Generating...</span>
-      </p>
-
-      <button id="startChat"
-              class="w-full bg-green-500 text-white py-2 rounded">
-        Start Chat
-      </button>
+      </select> </div>
+    <div class="mb-4"> <label class="block text-sm font-semibold">Search by Code (optional):</label> <input type="text"
+        id="searchCode" class="w-full mt-1 p-2 border rounded-md" placeholder="Enter friend's code"> </div>
+    <div class="mb-4 text-sm text-gray-700"> <strong>Your Code:</strong> <span id="yourCode"
+        class="text-purple-600 font-mono">Generating...</span> </div> <button id="startChat"
+      class="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition">Start Chat</button>
+    <div id="chat" class="hidden mt-4">
+      <p id="status" class="text-center text-gray-500">Searching for a partner...</p>
+      <div id="messages" class="h-96 overflow-y-auto bg-gray-100 p-4 rounded-lg space-y-3 shadow-inner"></div>
+      <div class="mt-2 flex items-center gap-2"> <input type="text" id="input"
+          class="flex-1 p-2 border border-gray-300 rounded-lg text-gray-900" placeholder="Type a message..."> <button
+          onclick="sendMessage()"
+          class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition">Send</button> </div>
+      <p id="typingIndicator" class="text-sm text-gray-500 mt-2 hidden">Stranger is typing...</p> <button id="skipChat"
+        class="w-full mt-2 bg-yellow-500 text-white py-2 rounded-lg hover:bg-yellow-600 transition hidden">Skip
+        Partner</button> <button id="exitChat"
+        class="w-full mt-4 bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 transition hidden">Exit Chat</button>
     </div>
-
-    <!-- MESSAGES -->
-    <div id="messages"
-         class="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
-    </div>
-
-    <p id="typingIndicator"
-       class="text-sm text-gray-500 px-4 hidden">
-      Stranger is typing...
-    </p>
-
-    <!-- INPUT -->
-    <div class="p-3 flex gap-2 border-t">
-      <input id="input"
-             class="flex-1 border rounded px-3 py-2"
-             placeholder="Type a message..." />
-
-      <button onclick="sendMessage()"
-              class="bg-indigo-600 hover:bg-indigo-700 transition text-white px-4 rounded">
-        ➤
-      </button>
-    </div>
-
-    <!-- ACTION BUTTONS -->
-    <div class="p-3 grid grid-cols-2 gap-2">
-      <button id="skipChat"
-              class="hidden bg-yellow-500 text-white py-2 rounded hover:bg-yellow-600">
-        Skip Partner
-      </button>
-
-      <button id="exitChat"
-              class="hidden bg-red-500 text-white py-2 rounded hover:bg-red-600">
-        Exit Chat
-      </button>
-    </div>
-
   </div>
-</div>
-
-<script src="./script.js"></script>
+  <div id="status"></div>
+  <script src="./script.js"></script>
 </body>
+
 </html>
