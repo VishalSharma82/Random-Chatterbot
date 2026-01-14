@@ -1,84 +1,91 @@
-body,
-html {
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
   margin: 0;
-  padding: 0;
   font-family: Arial, sans-serif;
 }
 
-/* Chat container */
+/* MAIN WRAPPER */
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* CHAT */
 #chat {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    background: #f2f2f2;
-    position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #f2f2f2;
 }
 
-/* Messages scrollable area */
+/* MESSAGES */
 #messages {
-    flex: 1; /* fill remaining space */
-    padding: 1rem;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    scroll-behavior: smooth;
+  flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
-/* Make scrollbar thin and visible */
-#messages::-webkit-scrollbar {
-    width: 6px;
-}
-#messages::-webkit-scrollbar-thumb {
-    background-color: rgba(0, 0, 0, 0.2);
-    border-radius: 3px;
-}
-#messages::-webkit-scrollbar-track {
-    background-color: transparent;
-}
-
-/* Sticky input area at bottom */
-#chat .input-area {
-    padding: 0.5rem;
-    border-top: 1px solid #ddd;
-    background: #fff;
-    display: flex;
-    gap: 0.5rem;
-    position: sticky;
-    bottom: 0;
-}
-
-/* Message bubble */
+/* MESSAGE BUBBLES */
 .message {
-    max-width: 75%;
-    padding: 0.5rem 1rem;
-    border-radius: 1rem;
-    font-size: 0.9rem;
-    word-wrap: break-word;
+  max-width: 80%;
+  padding: 0.6rem 1rem;
+  border-radius: 1rem;
+  font-size: 0.9rem;
+  word-wrap: break-word;
 }
 
 .message.you {
-    background-color: #25d366;
-    color: white;
-    align-self: flex-end;
-    border-bottom-right-radius: 0;
+  background: #25d366;
+  color: white;
+  align-self: flex-end;
 }
 
 .message.stranger {
-    background-color: #fff;
-    color: #333;
-    align-self: flex-start;
-    border-bottom-left-radius: 0;
+  background: white;
+  color: #333;
+  align-self: flex-start;
 }
 
-/* Typing indicator */
-#typingIndicator {
-    padding: 0.25rem 1rem;
-    font-size: 0.8rem;
-    color: #888;
-    font-style: italic;
+/* INPUT AREA */
+.input-area {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem;
 }
 
+/* INPUT */
+#input {
+  flex: 1;
+  min-width: 150px;
+}
+
+/* BUTTONS */
+button {
+  white-space: nowrap;
+}
+
+/* CALL OVERLAY */
+#callOverlay {
+  padding: 1rem;
+}
+
+/* VIDEO */
+video {
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+}
+
+/* SCROLLBAR */
 #messages::-webkit-scrollbar {
   width: 6px;
 }
@@ -86,10 +93,19 @@ html {
   background: rgba(0, 0, 0, 0.2);
   border-radius: 3px;
 }
-video {
-  width: 200px;
-  height: 150px;
-  margin: 5px;
-  border: 2px solid #333;
-  border-radius: 8px;
+
+/* MOBILE FIXES */
+@media (max-width: 768px) {
+
+  #partnerName {
+    font-size: 0.9rem;
+  }
+
+  #status {
+    font-size: 0.7rem;
+  }
+
+  .message {
+    font-size: 0.85rem;
+  }
 }

@@ -22,7 +22,9 @@ const remoteVideo = document.getElementById("remoteVideo");
 const acceptBtn = document.getElementById("acceptCallBtn");
 const rejectBtn = document.getElementById("rejectCallBtn");
 const endBtn = document.getElementById("endCallBtn");
-
+const openProfile = document.getElementById("openProfile");
+const closeProfile = document.getElementById("closeProfile");
+const profilePanel = document.getElementById("profilePanel");
 /* ================== STATE ================== */
 let partnerId = null;
 let partnerName = "";
@@ -280,6 +282,14 @@ function time() {
     minute: "2-digit"
   });
 }
+
+openProfile?.addEventListener("click", () => {
+  profilePanel.classList.remove("-translate-x-full");
+});
+
+closeProfile?.addEventListener("click", () => {
+  profilePanel.classList.add("-translate-x-full");
+});
 
 function generateCode(len) {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
