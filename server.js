@@ -2,146 +2,150 @@ const express = require("express");
 const app = express();
 const http = require("http").createServer(app);
 const { Server } = require("socket.io");
+
 const io = new Server(http, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
+  cors: { origin: "*", methods: ["GET", "POST"] }
 });
-const { v4: uuidv4 } = require("uuid");
 
 app.use(express.static("public"));
 
-/* ------------------ DATA ------------------ */
-const users = new Map(); // socket.id => user
+/* ================= DATA ================= */
+const users = new Map();        // socket.id => user
 const queue = [];
-const friends = new Map();
+const friends = new Map();      // code => [codes]
+const codeToSocket = new Map(); // code => socket.id
 
-/* ------------------ SOCKET ------------------ */
+/* ================= SOCKET ================= */
 io.on("connection", socket => {
+
+  /* ---- USER OBJECT ---- */
   const user = {
-    socket,
     socketId: socket.id,
-    code: uuidv4().slice(0, 8),
-    gender: "",
-    partner: null,
-    name: "Stranger"
+    socket,
+    code: null,
+    name: null,
+    partner: null
   };
 
   users.set(socket.id, user);
-  if (!friends.has(user.code)) friends.set(user.code, []);
-
-  socket.emit("your-code", user.code);
 
   /* ---------- SET CODE ---------- */
   socket.on("set-code", code => {
     user.code = code;
-    if (!friends.has(code)) friends.set(code, []);
+    user.name = `User-${code.slice(0, 4)}`;
+
+    friends.set(code, friends.get(code) || []);
+    codeToSocket.set(code, socket.id);
+
     socket.emit("your-code", code);
     socket.emit("friends-list", friends.get(code));
   });
 
   /* ---------- FIND PARTNER ---------- */
-  socket.on("find-partner", ({ gender, searchCode }) => {
-    user.gender = gender;
-    user.partner = null;
+  socket.on("find-partner", ({ searchCode }) => {
     removeFromQueue(user);
+    user.partner = null;
 
+    // ---- Friend code based connect ----
     if (searchCode) {
-      const target = [...users.values()].find(
-        u => u.code === searchCode && !u.partner && u.socketId !== socket.id
-      );
-      if (target) return match(user, target);
+      const targetSocket = codeToSocket.get(searchCode);
+      const target = users.get(targetSocket);
+
+      if (target && !target.partner && target.socketId !== socket.id) {
+        return match(user, target);
+      } else {
+        socket.emit("friend-offline");
+        return;
+      }
     }
 
-    const waiting = queue.find(u => !u.partner && u.socketId !== socket.id);
+    // ---- Random match ----
+    const waiting = queue.find(
+      u => !u.partner && u.socketId !== socket.id
+    );
+
     if (waiting) {
       removeFromQueue(waiting);
       match(user, waiting);
     } else {
       queue.push(user);
-      socket.emit("status", "Searching...");
     }
   });
 
-  /* ---------- CHAT (FIXED) ---------- */
-  socket.on("send-message", msg => {
+  /* ---------- CHAT ---------- */
+  socket.on("send-message", text => {
     if (user.partner) {
-      user.partner.socket.emit("receive-message", msg);
+      users.get(user.partner)?.socket.emit("receive-message", {
+        from: user.name,
+        text
+      });
     }
   });
 
   socket.on("typing", status => {
     if (user.partner) {
-      user.partner.socket.emit("typing", { status });
+      users.get(user.partner)?.socket.emit("typing", { status });
     }
   });
 
-  /* ---------- FRIEND ---------- */
+  /* ---------- FRIEND ADD ---------- */
   socket.on("add-friend", () => {
     if (!user.partner) return;
 
-    const a = user.code;
-    const b = user.partner.code;
+    const me = user.code;
+    const other = users.get(user.partner).code;
 
-    if (!friends.get(a).includes(b)) friends.get(a).push(b);
-    if (!friends.get(b).includes(a)) friends.get(b).push(a);
+    if (!friends.get(me).includes(other))
+      friends.get(me).push(other);
 
-    socket.emit("friend-added", b);
-    user.partner.socket.emit("friend-added", a);
+    if (!friends.get(other).includes(me))
+      friends.get(other).push(me);
+
+    socket.emit("friend-added", other);
+    users.get(user.partner).socket.emit("friend-added", me);
   });
 
-  socket.on("get-friends", () => {
-    socket.emit("friends-list", friends.get(user.code) || []);
-  });
-
-  /* ---------- SKIP ---------- */
-  socket.on("skip-partner", () => {
-    if (user.partner) {
-      user.partner.partner = null;
-      user.partner.socket.emit("partner-disconnected");
-    }
-    user.partner = null;
-    removeFromQueue(user);
-    queue.push(user);
-  });
-
-  /* ---------- DISCONNECT ---------- */
-  socket.on("disconnect", () => {
-    removeFromQueue(user);
-    if (user.partner) {
-      user.partner.partner = null;
-      user.partner.socket.emit("partner-disconnected");
-    }
-    users.delete(socket.id);
-  });
-
-  /* ---------- WEBRTC ---------- */
-  socket.on("call-offer", ({ to, offer, video }) => {
-    users.get(to)?.socket.emit("call-offer", {
+  /* ---------- WEBRTC SIGNALING (FIXED) ---------- */
+  socket.on("call-offer", ({ to, offer, video, name }) => {
+    io.to(to).emit("call-offer", {
       from: socket.id,
+      name: user.name,
       offer,
       video
     });
   });
 
   socket.on("call-answer", ({ to, answer }) => {
-    users.get(to)?.socket.emit("call-answer", { answer });
+    io.to(to).emit("call-answer", { answer });
   });
 
   socket.on("ice-candidate", ({ to, candidate }) => {
-    users.get(to)?.socket.emit("ice-candidate", { candidate });
+    io.to(to).emit("ice-candidate", { candidate });
   });
 
   socket.on("call-rejected", ({ to }) => {
-    users.get(to)?.socket.emit("call-rejected");
+    io.to(to).emit("call-rejected");
+  });
+
+  /* ---------- SKIP ---------- */
+  socket.on("skip-partner", () => {
+    disconnectPartner(user);
+    queue.push(user);
+  });
+
+  /* ---------- DISCONNECT ---------- */
+  socket.on("disconnect", () => {
+    disconnectPartner(user);
+    removeFromQueue(user);
+    users.delete(socket.id);
+    codeToSocket.delete(user.code);
   });
 });
 
-/* ------------------ MATCH ------------------ */
+/* ================= HELPERS ================= */
 function match(a, b) {
-  a.partner = b;
-  b.partner = a;
+  a.partner = b.socketId;
+  b.partner = a.socketId;
 
   a.socket.emit("partner-found", {
     partnerId: b.socketId,
@@ -156,12 +160,23 @@ function match(a, b) {
   });
 }
 
+function disconnectPartner(user) {
+  if (user.partner) {
+    const other = users.get(user.partner);
+    if (other) {
+      other.partner = null;
+      other.socket.emit("partner-disconnected");
+    }
+    user.partner = null;
+  }
+}
+
 function removeFromQueue(user) {
   const i = queue.indexOf(user);
   if (i !== -1) queue.splice(i, 1);
 }
 
-/* ------------------ SERVER ------------------ */
+/* ================= SERVER ================= */
 const PORT = process.env.PORT || 3000;
 http.listen(PORT, () =>
   console.log(`✅ Server running on port ${PORT}`)
