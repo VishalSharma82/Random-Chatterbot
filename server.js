@@ -4,41 +4,44 @@ const http = require("http").createServer(app);
 const { Server } = require("socket.io");
 
 const io = new Server(http, {
-  cors: { origin: "*", methods: ["GET", "POST"] }
+  cors: { origin: "*", methods: ["GET", "POST"] },
 });
 
 app.use(express.static("public"));
 
 /* ================= DATA ================= */
-const users = new Map();        // socket.id => user
+const users = new Map(); // socket.id => user
 const queue = [];
-const friends = new Map();      // code => [codes]
+const friends = new Map(); // code => [codes]
 const codeToSocket = new Map(); // code => socket.id
+const User = require("./models/User");
 
 /* ================= SOCKET ================= */
-io.on("connection", socket => {
-
+io.on("connection", (socket) => {
   /* ---- USER OBJECT ---- */
   const user = {
     socketId: socket.id,
     socket,
     code: null,
     name: null,
-    partner: null
+    partner: null,
   };
 
   users.set(socket.id, user);
 
   /* ---------- SET CODE ---------- */
-  socket.on("set-code", code => {
+  socket.on("set-code", (code) => {
     user.code = code;
-    user.name = `User-${code.slice(0, 4)}`;
 
     friends.set(code, friends.get(code) || []);
     codeToSocket.set(code, socket.id);
 
     socket.emit("your-code", code);
     socket.emit("friends-list", friends.get(code));
+  });
+
+  socket.on("set-name", (name) => {
+    user.name = name;
   });
 
   /* ---------- FIND PARTNER ---------- */
@@ -60,9 +63,7 @@ io.on("connection", socket => {
     }
 
     // ---- Random match ----
-    const waiting = queue.find(
-      u => !u.partner && u.socketId !== socket.id
-    );
+    const waiting = queue.find((u) => !u.partner && u.socketId !== socket.id);
 
     if (waiting) {
       removeFromQueue(waiting);
@@ -73,36 +74,54 @@ io.on("connection", socket => {
   });
 
   /* ---------- CHAT ---------- */
-  socket.on("send-message", text => {
+  socket.on("send-message", (text) => {
     if (user.partner) {
       users.get(user.partner)?.socket.emit("receive-message", {
         from: user.name,
-        text
+        text,
       });
     }
   });
 
-  socket.on("typing", status => {
+  socket.on("typing", (status) => {
     if (user.partner) {
       users.get(user.partner)?.socket.emit("typing", { status });
     }
   });
 
   /* ---------- FRIEND ADD ---------- */
-  socket.on("add-friend", () => {
+
+  socket.on("add-friend", async () => {
     if (!user.partner) return;
 
-    const me = user.code;
-    const other = users.get(user.partner).code;
+    const meCode = user.code;
+    const otherCode = users.get(user.partner).code;
 
-    if (!friends.get(me).includes(other))
-      friends.get(me).push(other);
+    try {
+      // Update my friends list in DB
+      await User.updateOne(
+        { code: meCode },
+        { $addToSet: { friends: otherCode } } // prevents duplicates
+      );
 
-    if (!friends.get(other).includes(me))
-      friends.get(other).push(me);
+      // Update other user's friends list in DB
+      await User.updateOne(
+        { code: otherCode },
+        { $addToSet: { friends: meCode } }
+      );
 
-    socket.emit("friend-added", other);
-    users.get(user.partner).socket.emit("friend-added", me);
+      // Also update in-memory if you still use it
+      if (!friends.get(meCode).includes(otherCode))
+        friends.get(meCode).push(otherCode);
+      if (!friends.get(otherCode).includes(meCode))
+        friends.get(otherCode).push(meCode);
+
+      // Emit to clients
+      socket.emit("friend-added", otherCode);
+      users.get(user.partner).socket.emit("friend-added", meCode);
+    } catch (err) {
+      console.error("Failed to add friend:", err);
+    }
   });
 
   /* ---------- WEBRTC SIGNALING (FIXED) ---------- */
@@ -111,7 +130,7 @@ io.on("connection", socket => {
       from: socket.id,
       name: user.name,
       offer,
-      video
+      video,
     });
   });
 
@@ -149,14 +168,14 @@ function match(a, b) {
 
   a.socket.emit("partner-found", {
     partnerId: b.socketId,
-    name: b.name,
-    code: b.code
+    name: b.name || "Stranger",
+    code: b.code,
   });
 
   b.socket.emit("partner-found", {
     partnerId: a.socketId,
-    name: a.name,
-    code: a.code
+    name: a.name || "Stranger",
+    code: a.code,
   });
 }
 
@@ -178,6 +197,4 @@ function removeFromQueue(user) {
 
 /* ================= SERVER ================= */
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, () =>
-  console.log(`✅ Server running on port ${PORT}`)
-);
+http.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));

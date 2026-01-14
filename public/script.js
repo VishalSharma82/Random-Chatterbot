@@ -25,6 +25,7 @@ const endBtn = document.getElementById("endCallBtn");
 const openProfile = document.getElementById("openProfile");
 const closeProfile = document.getElementById("closeProfile");
 const profilePanel = document.getElementById("profilePanel");
+const yourCodeEl = document.getElementById("yourCode");
 /* ================== STATE ================== */
 let partnerId = null;
 let partnerName = "";
@@ -45,16 +46,24 @@ socket.on("connect", () => {
   socket.emit("set-code", code);
 });
 
+socket.on("your-code", (code) => {
+  yourCodeEl.innerText = code; // ✅ "Generating..." replace hoga
+});
+
 /* ================== START CHAT ================== */
 startChatBtn.onclick = () => {
   const searchCode = document.getElementById("searchCode").value.trim();
+  const name = document.getElementById("nameInput").value.trim() || "Stranger";
+
+  socket.emit("set-name", name); // ✅ REAL NAME
+  socket.emit("find-partner", { searchCode });
+
   startChatBtn.style.display = "none";
   chatDiv.style.display = "flex";
-  socket.emit("find-partner", { searchCode });
 };
 
 /* ================== PARTNER FOUND ================== */
-socket.on("partner-found", data => {
+socket.on("partner-found", (data) => {
   partnerId = data.partnerId;
   partnerName = data.name;
   partnerNameEl.innerText = partnerName;
@@ -63,7 +72,8 @@ socket.on("partner-found", data => {
 
   exitChatBtn.style.display =
     skipChatBtn.style.display =
-    addFriendBtn.style.display = "block";
+    addFriendBtn.style.display =
+      "block";
 });
 
 /* ================== CHAT ================== */
@@ -78,7 +88,7 @@ function sendMessage() {
   input.value = "";
 }
 
-socket.on("receive-message", data => {
+socket.on("receive-message", (data) => {
   appendMessage(data.from, data.text);
 });
 
@@ -130,8 +140,8 @@ exitChatBtn.onclick = () => location.reload();
 /* ================== FRIEND ================== */
 addFriendBtn.onclick = () => socket.emit("add-friend");
 
-socket.on("friend-added", code => {
-  if ([...friendsUl.children].some(li => li.innerText === code)) return;
+socket.on("friend-added", (code) => {
+  if ([...friendsUl.children].some((li) => li.innerText === code)) return;
   const li = document.createElement("li");
   li.innerText = code;
   friendsUl.appendChild(li);
@@ -147,13 +157,13 @@ socket.on("partner-disconnected", () => {
 
 /* ================== WEBRTC ================== */
 const rtcConfig = {
-  iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+  iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
 };
 
 async function initMedia(video) {
   localStream = await navigator.mediaDevices.getUserMedia({
     audio: true,
-    video
+    video,
   });
   localVideo.srcObject = localStream;
 }
@@ -161,13 +171,11 @@ async function initMedia(video) {
 function createPeer(to) {
   pc = new RTCPeerConnection(rtcConfig);
 
-  localStream.getTracks().forEach(track =>
-    pc.addTrack(track, localStream)
-  );
+  localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
 
-  pc.ontrack = e => (remoteVideo.srcObject = e.streams[0]);
+  pc.ontrack = (e) => (remoteVideo.srcObject = e.streams[0]);
 
-  pc.onicecandidate = e => {
+  pc.onicecandidate = (e) => {
     if (e.candidate)
       socket.emit("ice-candidate", { to, candidate: e.candidate });
   };
@@ -193,7 +201,7 @@ voiceBtn.onclick = () => startCall(false);
 videoBtn.onclick = () => startCall(true);
 
 /* ================== INCOMING CALL ================== */
-socket.on("call-offer", data => {
+socket.on("call-offer", (data) => {
   incomingCall = data;
   callActive = true;
   showIncomingCallUI(data.name);
@@ -269,7 +277,7 @@ function closeCall() {
   pc?.close();
   pc = null;
 
-  localStream?.getTracks().forEach(t => t.stop());
+  localStream?.getTracks().forEach((t) => t.stop());
   localStream = null;
 
   callOverlay.classList.add("hidden");
@@ -279,7 +287,7 @@ function closeCall() {
 function time() {
   return new Date().toLocaleTimeString([], {
     hour: "2-digit",
-    minute: "2-digit"
+    minute: "2-digit",
   });
 }
 
@@ -292,7 +300,8 @@ closeProfile?.addEventListener("click", () => {
 });
 
 function generateCode(len) {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   let out = "";
   for (let i = 0; i < len; i++)
     out += chars[Math.floor(Math.random() * chars.length)];
