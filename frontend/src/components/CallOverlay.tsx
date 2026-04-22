@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Phone, PhoneOff, Video, Mic, MicOff, User } from 'lucide-react';
+import { Phone, PhoneOff, Video, Mic, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface CallOverlayProps {

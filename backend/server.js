@@ -10,6 +10,13 @@ const io = new Server(http, {
 });
 
 const path = require("path");
+
+// Health check and root route for Render
+app.get("/", (req, res) => {
+  res.send("🚀 Random-Chatterbot Backend is running smoothly!");
+});
+
+// Serve frontend if available (fallback)
 app.use(express.static(path.join(__dirname, "../frontend/dist")));
 
 /* ================= DATA ================= */
