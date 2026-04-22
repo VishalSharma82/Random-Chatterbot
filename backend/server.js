@@ -1,4 +1,6 @@
+require("dotenv").config();
 const express = require("express");
+const mongoose = require("mongoose");
 const app = express();
 const http = require("http").createServer(app);
 const { Server } = require("socket.io");
@@ -7,7 +9,8 @@ const io = new Server(http, {
   cors: { origin: "*", methods: ["GET", "POST"] },
 });
 
-app.use(express.static("public"));
+const path = require("path");
+app.use(express.static(path.join(__dirname, "../frontend/dist")));
 
 /* ================= DATA ================= */
 const users = new Map(); // socket.id => user
@@ -15,6 +18,12 @@ const queue = [];
 const friends = new Map(); // code => [codes]
 const codeToSocket = new Map(); // code => socket.id
 const User = require("./models/User");
+
+// Connect to MongoDB
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => console.log("📦 Connected to MongoDB"))
+  .catch((err) => console.error("❌ MongoDB connection error:", err));
 
 /* ================= SOCKET ================= */
 io.on("connection", (socket) => {
