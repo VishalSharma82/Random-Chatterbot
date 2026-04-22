@@ -112,10 +112,26 @@ export function useChat() {
       closeCall();
     });
 
+    socket.on("video-switch-request", () => {
+      // Logic handled via UI prompt or auto-accept based on preference
+      // For now, we'll expose this via a state
+      setSwitchRequest(true);
+    });
+
+    socket.on("video-switch-response", async ({ accepted }) => {
+      if (accepted) {
+        await upgradeToVideo();
+      } else {
+        alert("Partner declined to switch to video.");
+      }
+    });
+
     return () => {
       socket.disconnect();
     };
   }, []);
+
+  const [switchRequest, setSwitchRequest] = useState(false);
 
   const appendMessage = (from: string, text: string) => {
     setMessages((prev) => [
@@ -185,6 +201,21 @@ export function useChat() {
       }
     };
 
+    pc.onnegotiationneeded = async () => {
+      try {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        socketRef.current?.emit("call-offer", {
+          to: userState.partnerId,
+          offer,
+          video: localStreamRef.current?.getVideoTracks().length! > 0,
+          name: userState.name
+        });
+      } catch (err) {
+        console.error("Negotiation error:", err);
+      }
+    };
+
     return pc;
   };
 
@@ -250,6 +281,46 @@ export function useChat() {
     setRemoteStream(null);
   };
 
+  const upgradeToVideo = async () => {
+    if (!pcRef.current || !userState.partnerId) return;
+
+    try {
+      const stream = await initMedia(true);
+      const videoTrack = stream.getVideoTracks()[0];
+      
+      // Check if track already added
+      const senders = pcRef.current.getSenders();
+      const videoSender = senders.find(s => s.track?.kind === 'video');
+      
+      if (videoSender) {
+        await videoSender.replaceTrack(videoTrack);
+      } else {
+        pcRef.current.addTrack(videoTrack, stream);
+      }
+    } catch (err) {
+      console.error("Upgrade to video error:", err);
+    }
+  };
+
+  const requestVideoSwitch = () => {
+    if (!userState.partnerId) return;
+    socketRef.current?.emit("video-switch-request", { to: userState.partnerId });
+  };
+
+  const respondVideoSwitch = async (accepted: boolean) => {
+    setSwitchRequest(false);
+    if (!userState.partnerId) return;
+    
+    socketRef.current?.emit("video-switch-response", { 
+      to: userState.partnerId, 
+      accepted 
+    });
+
+    if (accepted) {
+      await upgradeToVideo();
+    }
+  };
+
   return {
     connected,
     userState,
@@ -272,5 +343,9 @@ export function useChat() {
     isCalling,
     localStream,
     remoteStream,
+    /* Switch actions */
+    switchRequest,
+    requestVideoSwitch,
+    respondVideoSwitch,
   };
 }

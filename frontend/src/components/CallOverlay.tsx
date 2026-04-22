@@ -8,9 +8,12 @@ interface CallOverlayProps {
   isCalling: boolean;
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
+  switchRequest?: boolean;
   onAccept: () => void;
   onReject: () => void;
   onEnd: () => void;
+  onSwitchToVideo: () => void;
+  onRespondSwitch: (accepted: boolean) => void;
 }
 
 export const CallOverlay: React.FC<CallOverlayProps> = ({
@@ -21,10 +24,16 @@ export const CallOverlay: React.FC<CallOverlayProps> = ({
   remoteStream,
   onAccept,
   onReject,
-  onEnd
+  onEnd,
+  onSwitchToVideo,
+  onRespondSwitch,
+  switchRequest
 }) => {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
+
+  const isRemoteVideo = remoteStream && remoteStream.getVideoTracks().length > 0;
+  const isLocalVideo = localStream && localStream.getVideoTracks().length > 0;
 
   useEffect(() => {
     if (localVideoRef.current && localStream) {
@@ -49,7 +58,7 @@ export const CallOverlay: React.FC<CallOverlayProps> = ({
     >
       <div className="relative w-full max-w-4xl aspect-video bg-black rounded-3xl overflow-hidden shadow-2xl border border-white/10">
         {/* Remote Stream Display */}
-        {remoteStream && remoteStream.getVideoTracks().length > 0 ? (
+        {isRemoteVideo ? (
           <video
             ref={remoteVideoRef}
             autoPlay
@@ -74,7 +83,7 @@ export const CallOverlay: React.FC<CallOverlayProps> = ({
           dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
           className="absolute bottom-6 right-6 w-32 md:w-48 aspect-video bg-slate-800 rounded-xl overflow-hidden border-2 border-white/20 shadow-xl"
         >
-          {localStream && localStream.getVideoTracks().length > 0 ? (
+          {isLocalVideo ? (
             <video
               ref={localVideoRef}
               autoPlay
@@ -101,6 +110,36 @@ export const CallOverlay: React.FC<CallOverlayProps> = ({
             {callActive ? "Live Session" : isCalling ? "Initiating Call..." : "Incoming Request"}
           </motion.div>
         </div>
+
+        {/* Video Switch Prompt */}
+        <AnimatePresence>
+          {switchRequest && (
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 50 }}
+              className="absolute inset-x-0 bottom-24 flex justify-center z-20"
+            >
+              <div className="bg-slate-800/90 backdrop-blur-md p-4 rounded-2xl border border-white/10 shadow-2xl flex flex-col items-center gap-3">
+                <p className="text-white font-medium">Partner wants to enable video</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => onRespondSwitch(true)}
+                    className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg transition-colors"
+                  >
+                    Accept
+                  </button>
+                  <button
+                    onClick={() => onRespondSwitch(false)}
+                    className="px-4 py-1.5 bg-white/10 hover:bg-white/20 text-white text-sm font-bold rounded-lg transition-colors"
+                  >
+                    Decline
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Controls */}
@@ -140,7 +179,12 @@ export const CallOverlay: React.FC<CallOverlayProps> = ({
                 <Mic size={24} />
               </button>
               <button
-                className="w-14 h-14 bg-white/10 hover:bg-white/20 text-white rounded-full flex items-center justify-center backdrop-blur-md border border-white/10 transition-colors"
+                onClick={!isLocalVideo ? onSwitchToVideo : undefined}
+                className={`w-14 h-14 rounded-full flex items-center justify-center backdrop-blur-md border border-white/10 transition-colors ${
+                  isLocalVideo 
+                  ? 'bg-indigo-600 text-white border-indigo-400' 
+                  : 'bg-white/10 hover:bg-white/20 text-white'
+                }`}
               >
                 <Video size={24} />
               </button>

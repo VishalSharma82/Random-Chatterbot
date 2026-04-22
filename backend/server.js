@@ -162,6 +162,37 @@ io.on("connection", (socket) => {
     io.to(to).emit("call-rejected");
   });
 
+  socket.on("video-switch-request", ({ to }) => {
+    io.to(to).emit("video-switch-request", { from: socket.id });
+  });
+
+  socket.on("video-switch-response", ({ to, accepted }) => {
+    io.to(to).emit("video-switch-response", { accepted });
+  });
+
+  /* ---------- SOCIAL (FRIENDS) ---------- */
+  socket.on("add-friend", async () => {
+    if (!user.partnerId || !user.code) return;
+
+    const partner = users.get(user.partnerId);
+    if (!partner || !partner.code) return;
+
+    try {
+      // Add partner to my list
+      const dbUser = await User.findOneAndUpdate(
+        { code: user.code },
+        { $addToSet: { friends: partner.code } },
+        { new: true, upsert: true }
+      );
+
+      if (dbUser) {
+        socket.emit("friend-added", dbUser.friends);
+      }
+    } catch (err) {
+      console.error("Error adding friend:", err);
+    }
+  });
+
   /* ---------- SKIP ---------- */
   socket.on("skip-partner", () => {
     disconnectPartner(user);

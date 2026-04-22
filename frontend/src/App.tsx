@@ -29,6 +29,9 @@ function App() {
     isCalling,
     localStream,
     remoteStream,
+    switchRequest,
+    requestVideoSwitch,
+    respondVideoSwitch,
   } = useChat();
 
   const handleStartChat = (searchCode?: string) => {
@@ -49,9 +52,12 @@ function App() {
           isCalling={isCalling}
           localStream={localStream}
           remoteStream={remoteStream}
+          switchRequest={switchRequest}
           onAccept={acceptCall}
           onReject={rejectCall}
           onEnd={endCall}
+          onSwitchToVideo={requestVideoSwitch}
+          onRespondSwitch={respondVideoSwitch}
         />
       </AnimatePresence>
 
@@ -82,6 +88,7 @@ function App() {
           onExit={handleExit}
           onAddFriend={addFriend}
           onStartCall={startCall}
+          isPartnerFriend={friends.includes(userState.partnerId || '')}
         />
       </main>
 

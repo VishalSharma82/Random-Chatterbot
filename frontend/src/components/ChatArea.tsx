@@ -13,6 +13,7 @@ interface ChatAreaProps {
   onExit: () => void;
   onAddFriend: () => void;
   onStartCall: (video: boolean) => void;
+  isPartnerFriend: boolean;
 }
 
 export const ChatArea: React.FC<ChatAreaProps> = ({
@@ -24,7 +25,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   onSkip,
   onExit,
   onAddFriend,
-  onStartCall
+  onStartCall,
+  isPartnerFriend
 }) => {
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -99,10 +101,15 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={onAddFriend}
-              className="p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors"
-              title="Add Friend"
+              disabled={isPartnerFriend}
+              className={`p-2 rounded-full transition-colors ${
+                isPartnerFriend 
+                ? 'text-pink-500 bg-pink-50' 
+                : 'text-slate-400 hover:text-red-500 hover:bg-red-50'
+              }`}
+              title={isPartnerFriend ? "Already Friends" : "Add Friend"}
             >
-              <Heart size={24} fill="#ef4444" />
+              <Heart size={24} fill={isPartnerFriend ? "#ec4899" : "none"} strokeWidth={isPartnerFriend ? 0 : 2} />
             </motion.button>
           )}
         </div>
