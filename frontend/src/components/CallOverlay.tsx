@@ -48,8 +48,8 @@ export const CallOverlay: React.FC<CallOverlayProps> = ({
       className="fixed inset-0 bg-slate-950/95 flex flex-col items-center justify-center z-50 p-4"
     >
       <div className="relative w-full max-w-4xl aspect-video bg-black rounded-3xl overflow-hidden shadow-2xl border border-white/10">
-        {/* Remote Video */}
-        {remoteStream ? (
+        {/* Remote Stream Display */}
+        {remoteStream && remoteStream.getVideoTracks().length > 0 ? (
           <video
             ref={remoteVideoRef}
             autoPlay
@@ -57,23 +57,24 @@ export const CallOverlay: React.FC<CallOverlayProps> = ({
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center text-slate-500">
-            <div className="w-24 h-24 bg-slate-800 rounded-full flex items-center justify-center mb-4">
-              <User size={48} />
+          <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 bg-slate-900">
+            <div className="w-32 h-32 bg-indigo-500/10 rounded-full flex items-center justify-center mb-4 border-2 border-indigo-500/20 shadow-2xl">
+              <User size={64} className="text-indigo-500" />
             </div>
-            <p className="text-xl font-bold">
-              {incomingCall ? incomingCall.name : isCalling ? "Calling..." : "Connecting..."}
+            <p className="text-2xl font-bold text-white tracking-wide">
+              {incomingCall ? incomingCall.name : callActive ? "Voice Session" : "Connecting..."}
             </p>
+            {callActive && <p className="text-sm text-green-500 mt-2 font-medium">Secure Audio Channel Active</p>}
           </div>
         )}
 
-        {/* Local Video (Floating) */}
+        {/* Local Stream (Floating) */}
         <motion.div
           drag
           dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
           className="absolute bottom-6 right-6 w-32 md:w-48 aspect-video bg-slate-800 rounded-xl overflow-hidden border-2 border-white/20 shadow-xl"
         >
-          {localStream ? (
+          {localStream && localStream.getVideoTracks().length > 0 ? (
             <video
               ref={localVideoRef}
               autoPlay
@@ -82,8 +83,9 @@ export const CallOverlay: React.FC<CallOverlayProps> = ({
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <MicOff size={24} className="text-slate-600" />
+            <div className="w-full h-full flex flex-col items-center justify-center bg-slate-700">
+              <Mic size={24} className="text-white mb-1" />
+              <span className="text-[10px] text-white/50 uppercase font-bold tracking-tighter">You (Audio)</span>
             </div>
           )}
         </motion.div>

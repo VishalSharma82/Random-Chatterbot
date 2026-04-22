@@ -10,6 +10,7 @@ export function useChat() {
   const socketRef = useRef<Socket | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const iceCandidatesQueue = useRef<RTCIceCandidateInit[]>([]);
 
   const [connected, setConnected] = useState(false);
   const [userState, setUserState] = useState<UserState>({
@@ -36,7 +37,10 @@ export function useChat() {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
 
   useEffect(() => {
-    const socket = io("/");
+    // In production (Vercel), we use the absolute URL of the Render backend.
+    // In local development, the Vite proxy handles the '/' redirect.
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || "/";
+    const socket = io(backendUrl);
     socketRef.current = socket;
 
     socket.on("connect", () => {
@@ -90,12 +94,17 @@ export function useChat() {
         await pcRef.current.setRemoteDescription(new RTCSessionDescription(answer));
         setCallActive(true);
         setIsCalling(false);
+        // Process queued ice candidates
+        iceCandidatesQueue.current.forEach(cand => pcRef.current?.addIceCandidate(new RTCIceCandidate(cand)));
+        iceCandidatesQueue.current = [];
       }
     });
 
     socket.on("ice-candidate", ({ candidate }) => {
-      if (pcRef.current) {
+      if (pcRef.current && pcRef.current.remoteDescription) {
         pcRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+      } else {
+        iceCandidatesQueue.current.push(candidate);
       }
     });
 
@@ -210,6 +219,9 @@ export function useChat() {
     socketRef.current?.emit("call-answer", { to: from, answer });
     setIncomingCall(null);
     setCallActive(true);
+    // Process queued ice candidates
+    iceCandidatesQueue.current.forEach(cand => pc.addIceCandidate(new RTCIceCandidate(cand)));
+    iceCandidatesQueue.current = [];
   };
 
   const rejectCall = () => {
